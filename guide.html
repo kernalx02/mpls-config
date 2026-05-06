@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MPLS VPN Deployment Guide</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --accent-blue: #38bdf8;
+            --accent-green: #10b981;
+            --text-main: #f1f5f9;
+            --text-dim: #94a3b8;
+            --code-bg: #000000;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            border-bottom: 2px solid var(--accent-blue);
+            padding-bottom: 10px;
+            width: 100%;
+            max-width: 900px;
+        }
+
+        .slide-container {
+            width: 100%;
+            max-width: 900px;
+        }
+
+        .phase-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 50px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            border: 1px solid #334155;
+            display: none; /* Controlled by JS */
+        }
+
+        .phase-card.active {
+            display: block;
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h2 { color: var(--accent-blue); text-transform: uppercase; letter-spacing: 2px; }
+        h3 { color: var(--accent-green); margin-top: 25px; border-left: 4px solid var(--accent-green); padding-left: 10px; }
+
+        pre {
+            background-color: var(--code-bg);
+            color: #d1d5db;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Cascadia Code', 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            border: 1px solid #1e293b;
+            white-space: pre-wrap;
+        }
+
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 20px;
+        }
+
+        button {
+            background: var(--accent-blue);
+            color: #0f172a;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        button:hover { background: #7dd3fc; transform: scale(1.05); }
+        button:disabled { background: #475569; cursor: not-allowed; }
+
+        .label-red { color: #ef4444; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>MPLS VPN Phase-by-Phase Configuration</h1>
+        <p>Core, VPNv4, VRF, and CE Connectivity</p>
+    </div>
+
+    <div class="slide-container">
+        <div class="phase-card active" id="phase1">
+            <h2>Phase 1: IGP & MPLS LDP [cite: 1]</h2>
+            <p>Establishment of the core backbone routing and label distribution.</p>
+            
+            <h3>Router P1</h3>
+            <pre>
+hostname P1
+
+interface Loopback0
+ ip address 2.2.2.2 255.255.255.255
+ no shutdown
+
+interface FastEthernet0/0
+ description Link-to-PE1
+ ip address 10.0.23.2 255.255.255.252
+ no shutdown
+
+interface FastEthernet1/0
+ description Link-to-P2
+ ip address 10.0.34.1 255.255.255.252
+ no shutdown
+
+router ospf 1
+ router-id 2.2.2.2
+ network 2.2.2.2 0.0.0.0 area 0
+ network 10.0.23.0 0.0.0.3 area 0
+ network 10.0.34.0 0.0.0.3 area 0
+
+mpls label protocol ldp
+mpls ldp router-id Loopback0 force
+
+interface FastEthernet0/0
+ mpls ip
+
+interface FastEthernet1/0
+ mpls ip
+            </pre>
+
+            <h3>Router P2</h3>
+            <pre>
+hostname P2
+
+interface Loopback0
+ ip address 3.3.3.3 255.255.255.255
+ no shutdown
+
+interface FastEthernet0/0
+ description Link-to-P1
+ ip address 10.0.34.2 255.255.255.252
+ no shutdown
+
+interface FastEthernet1/0
+ description Link-to-PE2
+ ip address 10.0.45.1 255.255.255.252
+ no shutdown
+
+router ospf 1
+ router-id 3.3.3.3
+ network 3.3.3.3 0.0.0.0 area 0
+ network 10.0.34.0 0.0.0.3 area 0
+ network 10.0.45.0 0.0.0.3 area 0
+
+mpls label protocol ldp
+mpls ldp router-id Loopback0 force
+
+interface FastEthernet0/0
+ mpls ip
+
+interface FastEthernet1/0
+ mpls ip
+            </pre>
+        </div>
+
+        <div class="phase-card" id="phase2">
+            <h2>Phase 2: MP-BGP (VPNv4) [cite: 4]</h2>
+            <p>Configuring iBGP between PE routers to carry VPNv4 prefixes.</p>
+            
+            <h3>Router PE1</h3>
+            <pre>
+router bgp 100
+ bgp router-id 1.1.1.1
+ no bgp default ipv4-unicast
+ neighbor 4.4.4.4 remote-as 100
+ neighbor 4.4.4.4 update-source Loopback0
+
+ address-family vpnv4
+  neighbor 4.4.4.4 activate
+  neighbor 4.4.4.4 send-community extended
+ exit-address-family
+            </pre>
+
+            <h3>Router PE2</h3>
+            <pre>
+router bgp 100
+ bgp router-id 4.4.4.4
+ no bgp default ipv4-unicast
+ neighbor 1.1.1.1 remote-as 100
+ neighbor 1.1.1.1 update-source Loopback0
+
+ address-family vpnv4
+  neighbor 1.1.1.1 activate
+  neighbor 1.1.1.1 send-community extended
+ exit-address-family
+            </pre>
+        </div>
+
+        <div class="phase-card" id="phase3">
+            <h2>Phase 3: VRF & PE-CE Routing [cite: 5]</h2>
+            <p>Creating Virtual Routing and Forwarding (VRF) instances for the customer.</p>
+            
+            <h3>Router PE1</h3>
+            <pre>
+ip vrf CUSTOMER_A
+ rd 100:1
+ route-target export 100:1
+ route-target import 100:1
+
+interface FastEthernet0/0
+ description Link-to-CE1
+ ip vrf forwarding CUSTOMER_A
+ ip address 10.0.12.2 255.255.255.252
+ no shutdown
+
+router bgp 100
+ address-family ipv4 vrf CUSTOMER_A
+  neighbor 10.0.12.1 remote-as 65001
+  neighbor 10.0.12.1 activate
+  neighbor 10.0.12.1 as-override
+ exit-address-family
+            </pre>
+
+            <h3>Router PE2</h3>
+            <pre>
+ip vrf CUSTOMER_A
+ rd 100:1
+ route-target export 100:1
+ route-target import 100:1
+
+interface FastEthernet1/0
+ description Link-to-CE2
+ ip vrf forwarding CUSTOMER_A
+ ip address 10.0.56.1 255.255.255.252
+ no shutdown
+
+router bgp 100
+ address-family ipv4 vrf CUSTOMER_A
+  neighbor 10.0.56.2 remote-as 65002
+  neighbor 10.0.56.2 activate
+  neighbor 10.0.56.2 as-override
+ exit-address-family
+            </pre>
+        </div>
+
+        <div class="phase-card" id="phase4">
+            <h2>Phase 4: Customer Edge (CE) [cite: 6]</h2>
+            <p>Final configuration for customer site routers.</p>
+            
+            <h3>Router CE1</h3>
+            <pre>
+hostname CE1
+
+interface Loopback0
+ ip address 192.168.1.1 255.255.255.0
+ no shutdown
+
+interface FastEthernet0/0
+ ip address 10.0.12.1 255.255.255.252
+ no shutdown
+
+router bgp 65001
+ bgp router-id 192.168.1.1
+ neighbor 10.0.12.2 remote-as 100
+ address-family ipv4
+  network 192.168.1.0 mask 255.255.255.0
+  neighbor 10.0.12.2 activate
+ exit-address-family
+            </pre>
+
+            <h3>Router CE2</h3>
+            <pre>
+hostname CE2
+
+interface Loopback0
+ ip address 192.168.2.1 255.255.255.0
+ no shutdown
+
+interface FastEthernet0/0
+ ip address 10.0.56.2 255.255.255.252
+ no shutdown
+
+router bgp 65002
+ bgp router-id 192.168.2.1
+ neighbor 10.0.56.1 remote-as 100
+ address-family ipv4
+  network 192.168.2.0 mask 255.255.255.0
+  neighbor 10.0.56.1 activate
+ exit-address-family
+            </pre>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button id="prevBtn" onclick="changePhase(-1)" disabled>Previous Phase</button>
+        <button id="nextBtn" onclick="changePhase(1)">Next Phase</button>
+    </div>
+
+    <script>
+        let currentIdx = 1;
+        const totalPhases = 4;
+
+        function changePhase(step) {
+            document.getElementById(`phase${currentIdx}`).classList.remove('active');
+            currentIdx += step;
+            document.getElementById(`phase${currentIdx}`).classList.add('active');
+
+            document.getElementById('prevBtn').disabled = (currentIdx === 1);
+            document.getElementById('nextBtn').disabled = (currentIdx === totalPhases);
+            
+            window.scrollTo(0,0);
+        }
+    </script>
+</body>
+</html>

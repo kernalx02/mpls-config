@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MPLS VPN Deployment Guide</title>
+
     <style>
         :root {
             --bg-color: #0f172a;
@@ -15,6 +16,10 @@
             --code-bg: #000000;
         }
 
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             font-family: 'Segoe UI', system-ui, sans-serif;
             background-color: var(--bg-color);
@@ -22,38 +27,39 @@
             line-height: 1.6;
             margin: 0;
             padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+        }
+
+        /* Added a main wrapper to cleanly center everything without using body flex */
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            width: 100%;
         }
 
         .header {
             text-align: center;
             margin-bottom: 40px;
             border-bottom: 2px solid var(--accent-blue);
-            padding-bottom: 10px;
-            width: 100%;
-            max-width: 900px;
+            padding-bottom: 15px;
         }
 
         .slide-container {
             width: 100%;
-            max-width: 900px;
         }
 
         .phase-card {
             background: var(--card-bg);
-            border-radius: 12px;
+            border-radius: 14px;
             padding: 30px;
-            margin-bottom: 50px;
+            margin-bottom: 20px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.3);
             border: 1px solid #334155;
-            display: none; /* Controlled by JS */
+            display: none;
         }
 
         .phase-card.active {
             display: block;
-            animation: fadeIn 0.5s ease-in;
+            animation: fadeIn 0.4s ease-in-out;
         }
 
         @keyframes fadeIn {
@@ -61,8 +67,23 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        h2 { color: var(--accent-blue); text-transform: uppercase; letter-spacing: 2px; }
-        h3 { color: var(--accent-green); margin-top: 25px; border-left: 4px solid var(--accent-green); padding-left: 10px; }
+        h1 { margin-bottom: 10px; }
+        
+        h2 {
+            color: var(--accent-blue);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-top: 0;
+        }
+
+        h3 {
+            color: var(--accent-green);
+            margin-top: 30px;
+            border-left: 4px solid var(--accent-green);
+            padding-left: 12px;
+        }
+
+        p { color: var(--text-dim); }
 
         pre {
             background-color: var(--code-bg);
@@ -70,16 +91,19 @@
             padding: 20px;
             border-radius: 8px;
             overflow-x: auto;
-            font-family: 'Cascadia Code', 'Courier New', monospace;
+            font-family: 'Cascadia Code', Consolas, monospace;
             font-size: 14px;
             line-height: 1.5;
-            border: 1px solid #1e293b;
-            white-space: pre-wrap;
+            border: 1px solid #334155;
+            /* Changed to 'pre' so router commands stay on one line and scroll smoothly */
+            white-space: pre; 
         }
 
         .controls {
-            margin-top: 20px;
+            margin-top: 30px;
+            margin-bottom: 40px;
             display: flex;
+            justify-content: center; /* Centers the buttons cleanly */
             gap: 20px;
         }
 
@@ -87,33 +111,97 @@
             background: var(--accent-blue);
             color: #0f172a;
             border: none;
-            padding: 10px 25px;
-            border-radius: 5px;
+            padding: 12px 28px;
+            border-radius: 8px;
             font-weight: bold;
+            font-size: 15px;
             cursor: pointer;
-            transition: 0.3s;
+            transition: all 0.2s ease;
         }
 
-        button:hover { background: #7dd3fc; transform: scale(1.05); }
-        button:disabled { background: #475569; cursor: not-allowed; }
+        button:hover:not(:disabled) {
+            background: #7dd3fc;
+            transform: scale(1.05);
+        }
 
-        .label-red { color: #ef4444; font-weight: bold; }
+        button:disabled {
+            background: #475569;
+            color: #94a3b8;
+            cursor: not-allowed;
+        }
+
+        /* TABLE CSS FIXES */
+        .table-container {
+            margin-top: 40px;
+            overflow-x: auto; /* Allows table to scroll on mobile */
+            border-radius: 10px;
+            border: 1px solid #334155;
+        }
+
+        table {
+            width: 100%;
+            min-width: 600px; /* Prevents table from crushing on small screens */
+            border-collapse: collapse;
+            background-color: #111827;
+        }
+
+        th {
+            text-align: left;
+            padding: 16px;
+            background-color: #1f2937;
+            border-bottom: 2px solid #334155;
+            color: #ffffff;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid #334155;
+            font-size: 14px;
+        }
+
+        tr:hover { background-color: #1e293b; }
+        tr:last-child td { border-bottom: none; }
+
+        .highlight {
+            font-weight: bold;
+            color: #38bdf8; /* Switched to accent blue for better contrast */
+        }
+
+        .footer-note {
+            margin-top: 20px;
+            color: var(--text-dim);
+            font-size: 14px;
+            text-align: center;
+            font-style: italic;
+        }
+
+        /* Mobile Adjustments */
+        @media (max-width: 600px) {
+            .phase-card { padding: 20px; }
+            .controls { flex-direction: column; width: 100%; }
+            button { width: 100%; }
+        }
     </style>
 </head>
+
 <body>
 
+<div class="container">
     <div class="header">
-        <h1>MPLS VPN Phase-by-Phase Configuration</h1>
-        <p>Core, VPNv4, VRF, and CE Connectivity</p>
+        <h1>MPLS VPN Phase-by-Phase</h1>
+        <p>Complete MPLS VPN configuration guide with addressing table for GNS3 labs</p>
     </div>
 
     <div class="slide-container">
+        <!-- PHASE 1 -->
         <div class="phase-card active" id="phase1">
-            <h2>Phase 1: IGP & MPLS LDP [cite: 1]</h2>
-            <p>Establishment of the core backbone routing and label distribution.</p>
-            
+            <h2>Phase 1: Interfaces + MPLS + OSPF</h2>
+            <p>Configure the MPLS core backbone and establish OSPF routing.</p>
+
+
             <h3>Router P1</h3>
-            <pre>
+<pre>
 hostname P1
 
 interface Loopback0
@@ -137,17 +225,17 @@ router ospf 1
  network 10.0.34.0 0.0.0.3 area 0
 
 mpls label protocol ldp
-mpls ldp router-id Loopback0 force
+ mpls ldp router-id Loopback0 force
 
 interface FastEthernet0/0
  mpls ip
 
 interface FastEthernet1/0
  mpls ip
-            </pre>
+</pre>
 
             <h3>Router P2</h3>
-            <pre>
+<pre>
 hostname P2
 
 interface Loopback0
@@ -171,25 +259,76 @@ router ospf 1
  network 10.0.45.0 0.0.0.3 area 0
 
 mpls label protocol ldp
-mpls ldp router-id Loopback0 force
+ mpls ldp router-id Loopback0 force
 
 interface FastEthernet0/0
  mpls ip
 
 interface FastEthernet1/0
  mpls ip
-            </pre>
+</pre>
+            <h3>Router PE1</h3>
+<pre>
+hostname PE1
+
+interface Loopback0
+ ip address 1.1.1.1 255.255.255.255
+ no shutdown
+
+interface FastEthernet1/0
+ description Link-to-P1
+ ip address 10.0.23.1 255.255.255.252
+ no shutdown
+
+router ospf 1
+ router-id 1.1.1.1
+ network 1.1.1.1 0.0.0.0 area 0
+ network 10.0.23.0 0.0.0.3 area 0
+
+mpls label protocol ldp
+mpls ldp router-id Loopback0 force
+
+interface FastEthernet1/0
+ mpls ip
+</pre>
+
+            <h3>Router PE2</h3>
+<pre>
+hostname PE2
+
+interface Loopback0
+ ip address 4.4.4.4 255.255.255.255
+ no shutdown
+
+interface FastEthernet0/0
+ description Link-to-P2
+ ip address 10.0.45.2 255.255.255.252
+ no shutdown
+
+router ospf 1
+ router-id 4.4.4.4
+ network 4.4.4.4 0.0.0.0 area 0
+ network 10.0.45.0 0.0.0.3 area 0
+
+mpls label protocol ldp
+mpls ldp router-id Loopback0 force
+
+interface FastEthernet0/0
+ mpls ip
+</pre>
         </div>
 
+        <!-- PHASE 2 -->
         <div class="phase-card" id="phase2">
-            <h2>Phase 2: MP-BGP (VPNv4) [cite: 4]</h2>
-            <p>Configuring iBGP between PE routers to carry VPNv4 prefixes.</p>
-            
+            <h2>Phase 2: MP-BGP VPNv4</h2>
+            <p>Establish the Multiprotocol BGP session between Provider Edge routers.</p>
+
             <h3>Router PE1</h3>
-            <pre>
+<pre>
 router bgp 100
  bgp router-id 1.1.1.1
  no bgp default ipv4-unicast
+
  neighbor 4.4.4.4 remote-as 100
  neighbor 4.4.4.4 update-source Loopback0
 
@@ -197,13 +336,14 @@ router bgp 100
   neighbor 4.4.4.4 activate
   neighbor 4.4.4.4 send-community extended
  exit-address-family
-            </pre>
+</pre>
 
             <h3>Router PE2</h3>
-            <pre>
+<pre>
 router bgp 100
  bgp router-id 4.4.4.4
  no bgp default ipv4-unicast
+
  neighbor 1.1.1.1 remote-as 100
  neighbor 1.1.1.1 update-source Loopback0
 
@@ -211,15 +351,16 @@ router bgp 100
   neighbor 1.1.1.1 activate
   neighbor 1.1.1.1 send-community extended
  exit-address-family
-            </pre>
+</pre>
         </div>
 
+        <!-- PHASE 3 -->
         <div class="phase-card" id="phase3">
-            <h2>Phase 3: VRF & PE-CE Routing [cite: 5]</h2>
-            <p>Creating Virtual Routing and Forwarding (VRF) instances for the customer.</p>
-            
+            <h2>Phase 3: VRF + PE-CE</h2>
+            <p>Create Virtual Routing and Forwarding instances and configure the PE-CE routing.</p>
+
             <h3>Router PE1</h3>
-            <pre>
+<pre>
 ip vrf CUSTOMER_A
  rd 100:1
  route-target export 100:1
@@ -237,10 +378,10 @@ router bgp 100
   neighbor 10.0.12.1 activate
   neighbor 10.0.12.1 as-override
  exit-address-family
-            </pre>
+</pre>
 
             <h3>Router PE2</h3>
-            <pre>
+<pre>
 ip vrf CUSTOMER_A
  rd 100:1
  route-target export 100:1
@@ -258,15 +399,16 @@ router bgp 100
   neighbor 10.0.56.2 activate
   neighbor 10.0.56.2 as-override
  exit-address-family
-            </pre>
+</pre>
         </div>
 
+        <!-- PHASE 4 -->
         <div class="phase-card" id="phase4">
-            <h2>Phase 4: Customer Edge (CE) [cite: 6]</h2>
-            <p>Final configuration for customer site routers.</p>
-            
+            <h2>Phase 4: Customer Edge Routers</h2>
+            <p>Configure the customer sites to peer with the provider edge.</p>
+
             <h3>Router CE1</h3>
-            <pre>
+<pre>
 hostname CE1
 
 interface Loopback0
@@ -279,15 +421,17 @@ interface FastEthernet0/0
 
 router bgp 65001
  bgp router-id 192.168.1.1
+
  neighbor 10.0.12.2 remote-as 100
+
  address-family ipv4
   network 192.168.1.0 mask 255.255.255.0
   neighbor 10.0.12.2 activate
  exit-address-family
-            </pre>
+</pre>
 
             <h3>Router CE2</h3>
-            <pre>
+<pre>
 hostname CE2
 
 interface Loopback0
@@ -300,34 +444,115 @@ interface FastEthernet0/0
 
 router bgp 65002
  bgp router-id 192.168.2.1
+
  neighbor 10.0.56.1 remote-as 100
+
  address-family ipv4
   network 192.168.2.0 mask 255.255.255.0
   neighbor 10.0.56.1 activate
  exit-address-family
-            </pre>
+</pre>
+
+            <!-- TABLE -->
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Link</th>
+                            <th>Interface</th>
+                            <th>IP Address</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">CE1 ↔ PE1</td>
+                            <td>CE1 fa0/0 / PE1 fa0/0</td>
+                            <td>10.0.12.1/30 — 10.0.12.2/30</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">PE1 ↔ P1</td>
+                            <td>PE1 fa0/1 / P1 fa0/0</td>
+                            <td>10.0.23.1/30 — 10.0.23.2/30</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">P1 ↔ P2</td>
+                            <td>P1 fa0/1 / P2 fa0/0</td>
+                            <td>10.0.34.1/30 — 10.0.34.2/30</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">P2 ↔ PE2</td>
+                            <td>P2 fa0/1 / PE2 fa0/0</td>
+                            <td>10.0.45.1/30 — 10.0.45.2/30</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">PE2 ↔ CE2</td>
+                            <td>PE2 fa0/1 / CE2 fa0/0</td>
+                            <td>10.0.56.1/30 — 10.0.56.2/30</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">CE1 LAN</td>
+                            <td>Loopback0</td>
+                            <td>192.168.1.1/24</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">CE2 LAN</td>
+                            <td>Loopback0</td>
+                            <td>192.168.2.1/24</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">PE1 Loopback</td>
+                            <td>Loopback0</td>
+                            <td>1.1.1.1/32</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">P1 Loopback</td>
+                            <td>Loopback0</td>
+                            <td>2.2.2.2/32</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">P2 Loopback</td>
+                            <td>Loopback0</td>
+                            <td>3.3.3.3/32</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">PE2 Loopback</td>
+                            <td>Loopback0</td>
+                            <td>4.4.4.4/32</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="footer-note">
+                MPLS VPN Lab Topology Addressing Summary
+            </div>
         </div>
     </div>
 
     <div class="controls">
-        <button id="prevBtn" onclick="changePhase(-1)" disabled>Previous Phase</button>
-        <button id="nextBtn" onclick="changePhase(1)">Next Phase</button>
+        <button id="prevBtn" onclick="changePhase(-1)" disabled>
+            ← Previous Phase
+        </button>
+        <button id="nextBtn" onclick="changePhase(1)">
+            Next Phase →
+        </button>
     </div>
+</div>
 
-    <script>
-        let currentIdx = 1;
-        const totalPhases = 4;
+<script>
+    let currentIdx = 1;
+    const totalPhases = 4;
 
-        function changePhase(step) {
-            document.getElementById(`phase${currentIdx}`).classList.remove('active');
-            currentIdx += step;
-            document.getElementById(`phase${currentIdx}`).classList.add('active');
+    function changePhase(step) {
+        document.getElementById(`phase${currentIdx}`).classList.remove('active');
+        currentIdx += step;
+        document.getElementById(`phase${currentIdx}`).classList.add('active');
+        
+        document.getElementById('prevBtn').disabled = (currentIdx === 1);
+        document.getElementById('nextBtn').disabled = (currentIdx === totalPhases);
+        
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+</script>
 
-            document.getElementById('prevBtn').disabled = (currentIdx === 1);
-            document.getElementById('nextBtn').disabled = (currentIdx === totalPhases);
-            
-            window.scrollTo(0,0);
-        }
-    </script>
 </body>
 </html>

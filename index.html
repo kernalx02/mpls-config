@@ -528,6 +528,66 @@ router bgp 65002
         </div>
     </div>
 
+</div>
+<div class="phase-card" id="phase5">
+            <h2>Phase 5: Verification & Troubleshooting</h2>
+            <p>Verify that the end-to-end path is functional and labels are being distributed correctly.</p>
+
+            <h3>1. Core Connectivity (LDP & OSPF)</h3>
+            <p>On P or PE routers, ensure the MPLS backbone is healthy.</p>
+<pre>
+show mpls ldp neighbor      # Status: OPERATIONAL
+show mpls forwarding-table  # Check for Local and Outgoing labels
+show ip ospf neighbor       # Status: FULL
+</pre>
+
+            <h3>2. Control Plane (MP-BGP & VPNv4)</h3>
+            <p>On PE routers, verify the BGP session and route exchange.</p>
+<pre>
+show bgp vpnv4 unicast all summary   # State should be a number (prefixes received)
+show bgp vpnv4 unicast vrf CUSTOMER_A # Verify customer routes are in BGP
+</pre>
+
+            <h3>3. Data Plane (End-to-End Ping)</h3>
+            <p>From CE1, ping the remote LAN using the source loopback.</p>
+<pre>
+CE1# ping 192.168.2.1 source Loopback0
+# Result should be: Success rate is 100 percent (5/5)
+
+CE1# traceroute 192.168.2.1 source Loopback0
+# You should see the MPLS labels being used in the core hops.
+</pre>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Verification Level</th>
+                            <th>Command</th>
+                            <th>What to look for?</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="highlight">Layer 2/3 Core</td>
+                            <td><code>show ip interface brief</code></td>
+                            <td>All physical links up/up.</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">MPLS Labeling</td>
+                            <td><code>show mpls ldp bindings</code></td>
+                            <td>Labels assigned to loopbacks.</td>
+                        </tr>
+                        <tr>
+                            <td class="highlight">VPN Routes</td>
+                            <td><code>show ip route vrf CUSTOMER_A</code></td>
+                            <td>Remote LAN (192.168.2.0) visible via BGP.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
     <div class="controls">
         <button id="prevBtn" onclick="changePhase(-1)" disabled>
             ← Previous Phase
@@ -540,7 +600,7 @@ router bgp 65002
 
 <script>
     let currentIdx = 1;
-    const totalPhases = 4;
+    const totalPhases = 5;
 
     function changePhase(step) {
         document.getElementById(`phase${currentIdx}`).classList.remove('active');
